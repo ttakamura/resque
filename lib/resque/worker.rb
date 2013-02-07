@@ -227,7 +227,11 @@ module Resque
     def reconnect
       tries = 0
       begin
-        redis.client.reconnect
+        if redis.respond_to?(:nodes)
+          redis.nodes.each {|node| node.client.reconnect }
+        else
+          redis.client.reconnect
+        end
       rescue Redis::BaseConnectionError
         if (tries += 1) <= 3
           Resque.logger.info "Error reconnecting to Redis; retrying"
@@ -253,7 +257,7 @@ module Resque
     # determine if yours does.
     def fork(job,&block)
       return if @cant_fork
-      
+
       # Only run before_fork hooks if we're actually going to fork
       # (after checking @cant_fork)
       run_hook :before_fork, job if will_fork?
@@ -519,7 +523,7 @@ module Resque
     def idle?
       state == :idle
     end
-    
+
     def will_fork?
       !(@cant_fork || $TESTING)
     end
